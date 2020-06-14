@@ -6,6 +6,7 @@ import {
   ScrollView,
   Alert,
   FlatList,
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import NumberContainer from "../components/Number";
@@ -14,6 +15,7 @@ import MainButton from "../components/MainButton";
 import DefaultStyles from "../constants/default-styles";
 import color from "../constants/color";
 import BodyText from "../components/BodyText";
+import * as ScreenOrientation from "expo-screen-orientation";
 
 const generateRandombetween = (min, max, exclude) => {
   min = Math.ceil(min);
@@ -36,13 +38,32 @@ const renderlistItem = (listLength, itemData) => {
 };
 
 const GameScreen = (props) => {
+  //ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT);
+
   const initialGuess = generateRandombetween(1, 100, props.userChoice);
   const [currentGuess, setCurrentGuess] = useState(initialGuess);
   const [pastGuesses, setPastGuesses] = useState([initialGuess.toString()]);
+  const [deviceWidth, setDeviceWidth] = useState(
+    Dimensions.get("window").width
+  );
+  const [deviceHeight, setDeviceHeight] = useState(
+    Dimensions.get("window").height
+  );
   const currentLow = useRef(1);
   const currentHigh = useRef(100);
 
   const { userChoice, onGameOver } = props;
+
+  useEffect(() => {
+    const updateLayout = () => {
+      setDeviceWidth(Dimensions.get("window").width);
+      setDeviceHeight(Dimensions.get("window").height);
+    };
+    Dimensions.addEventListener("change", updateLayout);
+    return () => {
+      Dimensions.removeEventListener("change", updateLayout);
+    };
+  }, []);
 
   useEffect(() => {
     if (currentGuess === userChoice) {
@@ -73,6 +94,38 @@ const GameScreen = (props) => {
     setCurrentGuess(nextNumber);
     setPastGuesses((curPastGuess) => [nextNumber.toString(), ...curPastGuess]);
   };
+  let listContainerStyle = styles.listContainer;
+
+  if (Dimensions.get("window").width < 380) {
+    listContainerStyle = styles.listContainerBig;
+  }
+
+  if (deviceHeight < 500) {
+    return (
+      <View style={styles.screen}>
+        <Text style={DefaultStyles.title}>Opponent's Guess</Text>
+        <View style={styles.controls}>
+          <MainButton onPress={nextGuessHandler.bind(this, "lower")}>
+            <Ionicons name="md-remove" size={24} color="white"></Ionicons>
+          </MainButton>
+          <NumberContainer>{currentGuess}</NumberContainer>
+          <MainButton onPress={nextGuessHandler.bind(this, "greater")}>
+            <Ionicons name="md-add" size={24} color="white"></Ionicons>
+          </MainButton>
+        </View>
+
+        <View style={listContainerStyle}>
+          <FlatList
+            contentContainerStyle={styles.list}
+            keyExtractor={(item) => item}
+            data={pastGuesses}
+            renderItem={renderlistItem.bind(this, pastGuesses.length)}
+          ></FlatList>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.screen}>
       <Text style={DefaultStyles.title}>Opponent's Guess</Text>
@@ -85,7 +138,7 @@ const GameScreen = (props) => {
           <Ionicons name="md-add" size={24} color="white"></Ionicons>
         </MainButton>
       </Card>
-      <View style={styles.listContainer}>
+      <View style={listContainerStyle}>
         {/* <ScrollView contentContainerStyle={styles.list}>
           {pastGuesses.map((guess, index) =>
             renderlistItem(guess, pastGuesses.length - index)
@@ -111,11 +164,22 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginTop: 20,
+    //marginTop: 20,
+    marginTop: Dimensions.get("window").height > 600 ? 30 : 10,
     width: 400,
     maxWidth: "90%",
   },
+  controls: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: "80%",
+    alignItems: "center",
+  },
   listContainer: {
+    width: "60%",
+    flex: 1,
+  },
+  listContainerBig: {
     width: "80%",
     flex: 1,
   },
@@ -132,7 +196,7 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     flexDirection: "row",
     justifyContent: "space-around",
-    width: "60%",
+    width: "80%",
   },
 });
 
